@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "901486566683",
+    "project_id": "db-c4a09",
+    "storage_bucket": "db-c4a09.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:901486566683:android:704e7355d292f595d0c7be",
+        "android_client_info": {
+          "package_name": "com.laporte.scatter3d_community"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQ5HbbVu4dZkZT8zTFPC6TOHMGBH7RbIY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
