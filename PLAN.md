@@ -11,26 +11,30 @@ Scatter3D CommunityアプリケーションにFirebase Cloud Storage統合を実
 
 ## 必要なFirebaseコンソール操作
 
-### Firebase Console側で実施が必要な作業
-1. **Cloud Storageの有効化**
+### Firebase Console側で実施が必要な作業（重要）
+1. **Authentication（認証）の有効化**
+   - Firebase Console > Authentication > Sign-in method
+   - 「Anonymous」を有効化（Enable）する
+   - これを行わないとアプリ起動時にエラーが発生します
+
+2. **Cloud Storageの有効化**
    - Firebase Console > Storage > Get started
    - デフォルトバケットの作成
+   - リージョンを選択（asia-northeast1推奨）
 
-2. **ストレージセキュリティルールの設定**
+3. **ストレージセキュリティルールの設定**
    ```javascript
    // 開発用（本番環境では認証を実装）
    rules_version = '2';
    service firebase.storage {
      match /b/{bucket}/o {
        match /{allPaths=**} {
-         allow read, write: if true;
+         allow read, write: if request.auth != null;
        }
      }
    }
    ```
-
-3. **Web APIキーの確認**
-   - Project Settings > General > Web API Key をメモ
+   ※匿名認証ユーザーのみアクセス可能にする設定
 
 ## 技術アーキテクチャ
 
@@ -62,24 +66,41 @@ lib/
 
 ### フェーズ1：基盤設定
 - [x] PLAN.mdの作成
-- [ ] pubspec.yamlに依存関係追加
-- [ ] .env設定ファイルの作成
-- [ ] .gitignore更新
+- [x] pubspec.yamlに依存関係追加
+- [x] Firebase匿名認証の設定
+- [x] ローカルデータベースコードの削除
 
 ### フェーズ2：サービス層実装
-- [ ] Firebase Storage サービスクラス実装
-- [ ] ProjectModelの Cloud Storage対応
-- [ ] ProjectDaoの置き換え実装
+- [x] Firebase Storage サービスクラス実装
+- [x] ProjectModelの Cloud Storage対応
+- [x] ProjectProviderの完全な書き換え
 
 ### フェーズ3：UI層実装
-- [ ] ProjectProviderの非同期処理対応
-- [ ] クラウドファイル一覧画面の実装
-- [ ] 既存画面のCloud Storage対応
+- [x] ProjectProviderの非同期処理対応
+- [x] Import CSV機能をCloud Storageアップロードに変更
+- [x] 既存画面のCloud Storage対応
 
-### フェーズ4：統合テスト
-- [ ] アップロード機能テスト
-- [ ] ダウンロード機能テスト
-- [ ] エラーハンドリング確認
+### フェーズ4：Firebase Console設定（必須）
+- [ ] **Authentication（匿名認証）の有効化**: 最重要！これなしではアプリが起動しません
+- [ ] **Cloud Storageの有効化**: Firebase Console > Storage > Get started
+- [ ] **ストレージセキュリティルールの設定**: 匿名認証ユーザー用のルールを適用
+- [ ] **プロジェクトの動作確認**: CSV アップロード・ダウンロード機能のテスト
+
+## トラブルシューティング
+
+### エラー: internal-error / auth/operation-not-allowed
+**原因**: Firebase Authenticationの匿名認証が有効化されていない
+**解決方法**: 
+1. Firebase Console > Authentication > Sign-in method
+2. 「Anonymous」を「Enable」に変更
+3. アプリを再起動
+
+### エラー: Firebase Storage access denied
+**原因**: Storageのセキュリティルールが設定されていない
+**解決方法**:
+1. Firebase Console > Storage > Rules
+2. 上記のセキュリティルールをコピー&ペースト
+3. 「Publish」をクリック
 
 ## ファイル変更概要
 

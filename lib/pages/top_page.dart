@@ -34,7 +34,7 @@ class TopPageState extends State<TopPage> {
     );
 
     if (shouldDelete == true) {
-      await _projectProvider.deleteProject(int.parse(projectKey));
+      await _projectProvider.deleteProject(projectKey);
     }
   }
 
@@ -83,12 +83,12 @@ class TopPageState extends State<TopPage> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => PreviewPage(projectKey: project.key.toString())),
+                                MaterialPageRoute(builder: (context) => PreviewPage(projectKey: project.storageRef!)),
                               );
                             },
                             trailing: IconButton(
                               onPressed: () {
-                                _deleteProject(project.key.toString());
+                                _deleteProject(project.storageRef!);
                               },
                               icon: const Icon(Icons.delete),
                             ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:scatter3d_community/import_csv.dart';
 import 'package:scatter3d_community/projects/project_model.dart';
 import 'package:scatter3d_community/projects/project_provider.dart';
 import 'package:scatter3d_community/utils/scatter_plot_widget.dart';
@@ -23,7 +22,6 @@ class PreviewPageState extends State<PreviewPage> {
   ProjectProvider? _projectProvider;
   ProjectModel? _project;
   List<dynamic>? scores;
-  final _csvImporter = CsvImporter();
 
   @override
   void initState() {
@@ -39,17 +37,15 @@ class PreviewPageState extends State<PreviewPage> {
   Future<void> _loadData() async {
     try {
       if (_projectProvider == null) return;
-      _project = await _projectProvider!.getProject(int.parse(widget.projectKey));
+      _project = _projectProvider!.getProjectByStorageRef(widget.projectKey);
       
       if (_project == null || _project!.csvFilePath == null) {
         FailureSnackBar.show('Project or CSV path not found');
         return;
       }
 
-      // Use stored JSON if available, otherwise fall back to reloading the CSV file
-      final List<Map<String, dynamic>> parsedData = _project!.jsonData != null
-          ? List<Map<String, dynamic>>.from(_project!.jsonData)
-          : await _csvImporter.loadFromPath(_project!.csvFilePath!, context);
+      // Use stored JSON data
+      final List<Map<String, dynamic>> parsedData = List<Map<String, dynamic>>.from(_project!.jsonData);
       
       final List<dynamic> transformed = parsedData.map((data) {
         return {
