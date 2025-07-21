@@ -24,16 +24,33 @@ class ProjectProvider extends ChangeNotifier {
           // CSVファイルをダウンロードして解析
           final data = await _storageService.downloadFile(ref.fullPath);
           final csvContent = utf8.decode(data);
+          print('DEBUG loadProjects: CSV content length: ${csvContent.length}');
+          print('DEBUG loadProjects: First 200 chars: ${csvContent.length > 200 ? csvContent.substring(0, 200) : csvContent}');
           
           // ファイル名からプロジェクト名を取得
           final fileName = ref.name;
           final projectName = fileName.replaceAll('.csv', '');
           
-          // CSVデータを解析
-          final List<List<dynamic>> csvData = CsvCodec().decoder.convert(csvContent);
+          // CSVデータを解析（改行文字を統一）
+          final normalizedCsvContent = csvContent.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+          print('DEBUG: Normalized content first 200 chars: ${normalizedCsvContent.length > 200 ? normalizedCsvContent.substring(0, 200) : normalizedCsvContent}');
+          
+          // 手動でCSVを解析
+          final lines = normalizedCsvContent.split('\n').where((line) => line.trim().isNotEmpty).toList();
+          print('DEBUG: Lines count: ${lines.length}');
+          print('DEBUG: First few lines: ${lines.take(3).toList()}');
+          
+          final List<List<dynamic>> csvData = [];
+          for (final line in lines) {
+            final row = line.split(',');
+            csvData.add(row);
+          }
+          
+          print('DEBUG loadProjects: CSV rows count: ${csvData.length}');
           
           if (csvData.isNotEmpty) {
             final headers = csvData.first.map((e) => e.toString()).toList();
+            print('DEBUG loadProjects: Headers: $headers');
             final jsonData = <Map<String, dynamic>>[];
             
             for (int i = 1; i < csvData.length; i++) {
@@ -44,6 +61,9 @@ class ProjectProvider extends ChangeNotifier {
               }
               jsonData.add(rowData);
             }
+            
+            print('DEBUG loadProjects: JsonData length: ${jsonData.length}');
+            print('DEBUG loadProjects: First jsonData item: ${jsonData.isNotEmpty ? jsonData.first : "empty"}');
             
             // プロジェクトモデルを作成
             final project = ProjectModel(
@@ -65,6 +85,8 @@ class ProjectProvider extends ChangeNotifier {
             );
             
             _projects.add(project);
+          } else {
+            print('DEBUG loadProjects: CSV data is empty for ${ref.name}');
           }
         } catch (e) {
           // 個別のファイル読み込みエラーはログに出力するが、全体の処理は継続
@@ -95,7 +117,8 @@ class ProjectProvider extends ChangeNotifier {
       
       // CSVファイルを読み取ってプロジェクトデータを生成
       final csvContent = await csvFile.readAsString();
-      final List<List<dynamic>> csvData = CsvCodec().decoder.convert(csvContent);
+      final normalizedCsvContent = csvContent.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+      final List<List<dynamic>> csvData = const CsvToListConverter().convert(normalizedCsvContent);
       
       if (csvData.isNotEmpty) {
         final headers = csvData.first.map((e) => e.toString()).toList();

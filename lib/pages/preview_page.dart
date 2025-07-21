@@ -37,34 +37,73 @@ class PreviewPageState extends State<PreviewPage> {
   Future<void> _loadData() async {
     try {
       if (_projectProvider == null) return;
+      print('DEBUG: Looking for project with key: ${widget.projectKey}');
+      print('DEBUG: Available projects: ${_projectProvider!.projects.map((p) => p.storageRef).toList()}');
+      
       _project = _projectProvider!.getProjectByStorageRef(widget.projectKey);
       
-      if (_project == null || _project!.csvFilePath == null) {
-        FailureSnackBar.show('Project or CSV path not found');
+      if (_project == null) {
+        print('DEBUG: Project not found for storageRef: ${widget.projectKey}');
+        FailureSnackBar.show('Project not found');
+        return;
+      }
+      
+      print('DEBUG: Found project: ${_project!.projectName}');
+      print('DEBUG: Project jsonData length: ${_project!.jsonData.length}');
+      
+      if (_project!.csvFilePath == null) {
+        FailureSnackBar.show('CSV path not found');
         return;
       }
 
       // Use stored JSON data
       final List<Map<String, dynamic>> parsedData = List<Map<String, dynamic>>.from(_project!.jsonData);
+      print('DEBUG: parsedData length: ${parsedData.length}');
+      print('DEBUG: first item: ${parsedData.isNotEmpty ? parsedData.first : "empty"}');
       
-      final List<dynamic> transformed = parsedData.map((data) {
-        return {
-          'value': [
-            data['x'].toDouble(),
-            data['y'].toDouble(),
-            data['z'].toDouble(),
-          ],
-          'name': data['id'].toString(),
-          'itemStyle': {'color': data['color'].toString()},
-          'symbolSize': data['size'] is int ? data['size'] : (data['size'] as num).toInt(),
-        };
-      }).toList();
+      if (parsedData.isEmpty) {
+        print('DEBUG: No data to transform');
+        setState(() {
+          scores = [];
+        });
+        return;
+      }
+      
+      // CSVの生データを3D座標用に変換
+      final List<dynamic> transformed = [];
+      for (int i = 0; i < parsedData.length; i++) {
+        final data = parsedData[i];
+        final keys = data.keys.toList();
+        print('DEBUG: Row $i keys: $keys');
+        print('DEBUG: Row $i data: $data');
+        
+        if (keys.length >= 3) {
+          try {
+            final xValue = double.parse(data[keys[0]].toString());
+            final yValue = double.parse(data[keys[1]].toString());
+            final zValue = double.parse(data[keys[2]].toString());
+            
+            transformed.add({
+              'value': [xValue, yValue, zValue],
+              'name': 'Point $i',
+              'itemStyle': {'color': '#ff6b6b'},
+              'symbolSize': 5,
+            });
+          } catch (e) {
+            print('DEBUG: Error parsing row $i: $e');
+          }
+        }
+      }
+      
+      print('DEBUG: transformed length: ${transformed.length}');
+      print('DEBUG: first transformed: ${transformed.isNotEmpty ? transformed.first : "empty"}');
 
       if (!mounted) return;
       setState(() {
         scores = transformed;
       });
     } catch (e) {
+      print('DEBUG: Error in _loadData: $e');
       if (!mounted) return;
       FailureSnackBar.show(e.toString());
       Navigator.popUntil(context, ModalRoute.withName('/topPage'));
