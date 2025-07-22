@@ -84,7 +84,7 @@ class _AxisConfigState extends State<AxisConfigWidget>{
                   keyboardType: const TextInputType.numberWithOptions(signed: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      widget.onMinValChanged(0.0);
+                      return null;
                     }
                     if (double.tryParse(value!) == null) {
                       return "数値を入力してください";
@@ -109,14 +109,13 @@ class _AxisConfigState extends State<AxisConfigWidget>{
                   keyboardType: const TextInputType.numberWithOptions(signed: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      widget.onMaxValChanged(0.0);
                       return null;
                     }
                     final parsed = double.tryParse(value);
-                    if (double.tryParse(value!) == null) {
+                    if (parsed == null) {
                       return "数値を入力してください";
                     }
-                    if (_minMin != null && parsed! <= _minMin!) {
+                    if (_minMin != null && parsed <= _minMin!) {
                       return "最小値より大きな値";
                     }
                     return null;

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:scatter3d_community/projects/project_model.dart';
 import 'package:scatter3d_community/projects/project_provider.dart';
 import 'package:scatter3d_community/utils/daialog.dart';
 import 'package:scatter3d_community/utils/scatter_plot_widget.dart';
@@ -43,7 +42,11 @@ class SecondPageState extends State<SecondPage> {
     // widget.parsedData は List<Map<String,dynamic>> として渡されている前提
     final List<dynamic> transformed = (widget.parsedData as List<Map<String, dynamic>>)
         .map((item) => {
-      'value': [item['x'], item['y'], item['z']],
+      'value': [
+        double.tryParse(item['x'].toString()) ?? 0.0,
+        double.tryParse(item['y'].toString()) ?? 0.0,
+        double.tryParse(item['z'].toString()) ?? 0.0,
+      ],
       'name': item['id'],
       'itemStyle': {'color': item['color']},
       'symbolSize': item['size'], // sizeでドットの大きさを個別指定
@@ -71,23 +74,7 @@ class SecondPageState extends State<SecondPage> {
 
     if (shouldSave == true) {
       try {
-        final newProject = ProjectModel(
-          projectName: widget.scatterData.title,
-          xLegend: widget.scatterData.xAxis.legend,
-          xMax: widget.scatterData.xAxis.max,
-          xMin: widget.scatterData.xAxis.min,
-          yLegend: widget.scatterData.yAxis.legend,
-          yMax: widget.scatterData.yAxis.max,
-          yMin: widget.scatterData.yAxis.min,
-          zLegend: widget.scatterData.zAxis.legend,
-          zMax: widget.scatterData.zAxis.max,
-          zMin: widget.scatterData.zAxis.min,
-          csvFilePath: widget.csvFilePath,
-          jsonData: widget.parsedData,
-          isSaved: true,
-          createdAt: DateTime.now(),
-        );
-        await _projectProvider?.addProject(newProject);
+        // Project is already saved to Cloud Storage during upload
         if (!mounted) return; 
         Navigator.popUntil(context, ModalRoute.withName('/topPage'));
       } catch (e) {

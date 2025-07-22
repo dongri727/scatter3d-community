@@ -10,7 +10,8 @@ class ProjectModel {
   String zLegend;
   double zMax;
   double zMin;
-  String? csvFilePath;
+  String? csvFilePath;  // Cloud Storage URL or local path
+  String? storageRef;   // Cloud Storage reference path
   List<Map<String, dynamic>> jsonData;
   bool isSaved;
   final DateTime createdAt;
@@ -28,6 +29,7 @@ class ProjectModel {
     required this.zMax,
     required this.zMin,
     this.csvFilePath,
+    this.storageRef,
     required this.jsonData,
     required this.isSaved,
     required this.createdAt,
@@ -46,6 +48,7 @@ class ProjectModel {
       'zMax': zMax,
       'zMin': zMin,
       'csvFilePath': csvFilePath,
+      'storageRef': storageRef,
       'jsonData': jsonData,
       'isSaved': isSaved,
       'createdAt': createdAt.toIso8601String(),
@@ -65,6 +68,7 @@ class ProjectModel {
     double? zMax,
     double? zMin,
     String? csvFilePath,
+    String? storageRef,
     List<Map<String, dynamic>>? jsonData,
     bool? isSaved,
     DateTime? createdAt,
@@ -82,6 +86,7 @@ class ProjectModel {
       zMax: zMax ?? this.zMax,
       zMin: zMin ?? this.zMin,
       csvFilePath: csvFilePath ?? this.csvFilePath,
+      storageRef: storageRef ?? this.storageRef,
       jsonData: jsonData ?? this.jsonData,
       isSaved: isSaved ?? this.isSaved,
       createdAt: createdAt ?? this.createdAt,
@@ -107,6 +112,7 @@ class ProjectModel {
       zMax: map['zMax'] as double,
       zMin: map['zMin'] as double,
       csvFilePath: map['csvFilePath'] as String?,
+      storageRef: map['storageRef'] as String?,
       jsonData: jsonData,
       isSaved: map['isSaved'] as bool,
       createdAt: DateTime.parse(map['createdAt'] as String),
