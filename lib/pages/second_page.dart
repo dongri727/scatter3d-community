@@ -42,7 +42,11 @@ class SecondPageState extends State<SecondPage> {
     // widget.parsedData は List<Map<String,dynamic>> として渡されている前提
     final List<dynamic> transformed = (widget.parsedData as List<Map<String, dynamic>>)
         .map((item) => {
-      'value': [item['x'], item['y'], item['z']],
+      'value': [
+        double.tryParse(item['x'].toString()) ?? 0.0,
+        double.tryParse(item['y'].toString()) ?? 0.0,
+        double.tryParse(item['z'].toString()) ?? 0.0,
+      ],
       'name': item['id'],
       'itemStyle': {'color': item['color']},
       'symbolSize': item['size'], // sizeでドットの大きさを個別指定

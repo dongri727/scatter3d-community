@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:scatter3d_community/projects/project_model.dart';
+import 'package:scatter3d_community/projects/axis_config_model.dart';
 import 'package:scatter3d_community/services/firebase_storage_service.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -118,7 +119,16 @@ class ProjectProvider extends ChangeNotifier {
       // CSVファイルを読み取ってプロジェクトデータを生成
       final csvContent = await csvFile.readAsString();
       final normalizedCsvContent = csvContent.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-      final List<List<dynamic>> csvData = const CsvToListConverter().convert(normalizedCsvContent);
+      
+      // 手動でCSVを解析（loadProjectsと同じ方法）
+      final lines = normalizedCsvContent.split('\n').where((line) => line.trim().isNotEmpty).toList();
+      print('DEBUG uploadCSV: Lines count: ${lines.length}');
+      final List<List<dynamic>> csvData = [];
+      for (final line in lines) {
+        final row = line.split(',');
+        csvData.add(row);
+      }
+      print('DEBUG uploadCSV: CSV rows count: ${csvData.length}');
       
       if (csvData.isNotEmpty) {
         final headers = csvData.first.map((e) => e.toString()).toList();
@@ -133,17 +143,28 @@ class ProjectProvider extends ChangeNotifier {
           jsonData.add(rowData);
         }
         
+        print('DEBUG uploadCSV: JsonData length: ${jsonData.length}');
+        print('DEBUG uploadCSV: First jsonData item: ${jsonData.isNotEmpty ? jsonData.first : "empty"}');
+        
+        // デフォルトの軸設定を作成してアップロード
+        final baseFileName = fileName.replaceAll('.csv', '');
+        final axisConfig = ProjectAxisConfig.createDefault(
+          projectName: projectName,
+          headers: headers,
+        );
+        await _storageService.uploadAxisConfigFile(axisConfig, baseFileName);
+        
         final project = ProjectModel(
           projectName: projectName,
-          xLegend: headers.isNotEmpty ? headers[0] : 'X',
-          yLegend: headers.length > 1 ? headers[1] : 'Y',
-          zLegend: headers.length > 2 ? headers[2] : 'Z',
-          xMax: 100,
-          xMin: 0,
-          yMax: 100,
-          yMin: 0,
-          zMax: 100,
-          zMin: 0,
+          xLegend: axisConfig.xAxis.legend,
+          yLegend: axisConfig.yAxis.legend,
+          zLegend: axisConfig.zAxis.legend,
+          xMax: axisConfig.xAxis.max,
+          xMin: axisConfig.xAxis.min,
+          yMax: axisConfig.yAxis.max,
+          yMin: axisConfig.yAxis.min,
+          zMax: axisConfig.zAxis.max,
+          zMin: axisConfig.zAxis.min,
           csvFilePath: downloadUrl,
           storageRef: 'users/${_storageService.currentUserId}/csv/$fileName',
           jsonData: jsonData,
@@ -159,6 +180,41 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  /// プロジェクトの軸設定を更新してCloud Storageに保存
+  Future<void> updateProjectAxisConfig(ProjectModel project, ProjectAxisConfig axisConfig) async {
+    try {
+      // プロジェクトのstorageRefからファイル名を取得
+      final storageRef = project.storageRef;
+      if (storageRef == null) {
+        throw Exception('プロジェクトにstorageRefが設定されていません');
+      }
+      
+      final fileName = storageRef.split('/').last.replaceAll('.csv', '');
+      await _storageService.uploadAxisConfigFile(axisConfig, fileName);
+      
+      // ローカルのプロジェクトデータも更新
+      final updatedProject = project.copyWith(
+        xLegend: axisConfig.xAxis.legend,
+        yLegend: axisConfig.yAxis.legend,
+        zLegend: axisConfig.zAxis.legend,
+        xMax: axisConfig.xAxis.max,
+        xMin: axisConfig.xAxis.min,
+        yMax: axisConfig.yAxis.max,
+        yMin: axisConfig.yAxis.min,
+        zMax: axisConfig.zAxis.max,
+        zMin: axisConfig.zAxis.min,
+      );
+      
+      final index = _projects.indexWhere((p) => p.storageRef == project.storageRef);
+      if (index != -1) {
+        _projects[index] = updatedProject;
+        notifyListeners();
+      }
+    } catch (e) {
+      throw Exception('軸設定の更新に失敗しました: $e');
+    }
+  }
+
   /// プロジェクトを更新（現在はローカルリストのみ更新）
   void updateProject(ProjectModel updatedProject) {
     final index = _projects.indexWhere((p) => p.storageRef == updatedProject.storageRef);
@@ -171,7 +227,19 @@ class ProjectProvider extends ChangeNotifier {
   /// プロジェクトを削除（Cloud Storageからも削除）
   Future<void> deleteProject(String storageRef) async {
     try {
+      // CSVファイルを削除
       await _storageService.deleteFile(storageRef);
+      
+      // 軸設定ファイルも削除
+      final fileName = storageRef.split('/').last;
+      final configPath = _storageService.getAxisConfigPath(fileName);
+      try {
+        await _storageService.deleteFile(configPath);
+      } catch (e) {
+        // 軸設定ファイルが存在しない場合は無視
+        print('軸設定ファイルの削除に失敗（ファイルが存在しない可能性）: $e');
+      }
+      
       _projects.removeWhere((project) => project.storageRef == storageRef);
       notifyListeners();
     } catch (e) {

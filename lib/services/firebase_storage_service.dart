@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:scatter3d_community/projects/axis_config_model.dart';
 
 class FirebaseStorageService {
   static final FirebaseStorageService _instance = FirebaseStorageService._internal();
@@ -106,4 +109,82 @@ class FirebaseStorageService {
 
   /// 現在のユーザーIDを取得
   String? get currentUserId => _auth.currentUser?.uid;
+
+  /// 軸設定ファイルをCloud Storageにアップロード
+  Future<String> uploadAxisConfigFile(ProjectAxisConfig config, String baseFileName) async {
+    try {
+      // 匿名認証を確認
+      if (_auth.currentUser == null) {
+        await signInAnonymously();
+      }
+
+      final String userId = _auth.currentUser!.uid;
+      final String fileName = '$baseFileName.json';
+      final String filePath = 'users/$userId/configs/$fileName';
+      
+      // JSONデータを準備
+      final String jsonString = jsonEncode(config.toMap());
+      final List<int> data = utf8.encode(jsonString);
+      
+      // ファイルをアップロード
+      final Reference ref = _storage.ref().child(filePath);
+      final UploadTask uploadTask = ref.putData(Uint8List.fromList(data), 
+        SettableMetadata(contentType: 'application/json'));
+      
+      // アップロード完了を待機
+      await uploadTask;
+      
+      return filePath;
+    } catch (e) {
+      throw Exception('軸設定ファイルのアップロードに失敗しました: $e');
+    }
+  }
+
+  /// 軸設定ファイルをCloud Storageからダウンロード
+  Future<ProjectAxisConfig?> downloadAxisConfigFile(String configPath) async {
+    try {
+      final Reference ref = _storage.ref().child(configPath);
+      final List<int> data = await ref.getData() ?? [];
+      
+      if (data.isEmpty) {
+        return null;
+      }
+      
+      final String jsonString = utf8.decode(data);
+      final Map<String, dynamic> jsonMap = jsonDecode(jsonString);
+      
+      return ProjectAxisConfig.fromMap(jsonMap);
+    } catch (e) {
+      print('軸設定ファイルのダウンロードエラー: $e');
+      return null;
+    }
+  }
+
+  /// ユーザーの軸設定ファイル一覧を取得
+  Future<List<Reference>> listAxisConfigFiles() async {
+    try {
+      // 匿名認証を確認
+      if (_auth.currentUser == null) {
+        await signInAnonymously();
+      }
+
+      final String userId = _auth.currentUser!.uid;
+      final String folderPath = 'users/$userId/configs';
+      
+      final Reference ref = _storage.ref().child(folderPath);
+      final ListResult result = await ref.listAll();
+      
+      return result.items;
+    } catch (e) {
+      print('軸設定ファイル一覧の取得エラー: $e');
+      return [];
+    }
+  }
+
+  /// CSVファイル名から軸設定ファイルのパスを生成
+  String getAxisConfigPath(String csvFileName) {
+    final String userId = _auth.currentUser?.uid ?? '';
+    final String configFileName = csvFileName.replaceAll('.csv', '.json');
+    return 'users/$userId/configs/$configFileName';
+  }
 }

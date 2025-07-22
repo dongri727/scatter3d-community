@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:scatter3d_community/projects/project_model.dart';
 import 'package:scatter3d_community/projects/project_provider.dart';
+import 'package:scatter3d_community/projects/axis_config_model.dart';
+import 'package:scatter3d_community/services/firebase_storage_service.dart';
 import 'package:scatter3d_community/utils/scatter_plot_widget.dart';
 import 'package:scatter3d_community/utils/snackbars.dart';
 
@@ -21,7 +23,9 @@ class PreviewPage extends StatefulWidget {
 class PreviewPageState extends State<PreviewPage> {
   ProjectProvider? _projectProvider;
   ProjectModel? _project;
+  ProjectAxisConfig? _axisConfig;
   List<dynamic>? scores;
+  final FirebaseStorageService _storageService = FirebaseStorageService();
 
   @override
   void initState() {
@@ -51,6 +55,19 @@ class PreviewPageState extends State<PreviewPage> {
       print('DEBUG: Found project: ${_project!.projectName}');
       print('DEBUG: Project jsonData length: ${_project!.jsonData.length}');
       
+      // 軸設定ファイルを読み込み
+      if (_project!.storageRef != null) {
+        final fileName = _project!.storageRef!.split('/').last;
+        final configPath = _storageService.getAxisConfigPath(fileName);
+        _axisConfig = await _storageService.downloadAxisConfigFile(configPath);
+        print('DEBUG: Axis config loaded: ${_axisConfig != null}');
+        if (_axisConfig != null) {
+          print('DEBUG: X axis: ${_axisConfig!.xAxis.legend} (${_axisConfig!.xAxis.min} - ${_axisConfig!.xAxis.max})');
+          print('DEBUG: Y axis: ${_axisConfig!.yAxis.legend} (${_axisConfig!.yAxis.min} - ${_axisConfig!.yAxis.max})');
+          print('DEBUG: Z axis: ${_axisConfig!.zAxis.legend} (${_axisConfig!.zAxis.min} - ${_axisConfig!.zAxis.max})');
+        }
+      }
+      
       if (_project!.csvFilePath == null) {
         FailureSnackBar.show('CSV path not found');
         return;
@@ -77,21 +94,20 @@ class PreviewPageState extends State<PreviewPage> {
         print('DEBUG: Row $i keys: $keys');
         print('DEBUG: Row $i data: $data');
         
-        if (keys.length >= 3) {
-          try {
-            final xValue = double.parse(data[keys[0]].toString());
-            final yValue = double.parse(data[keys[1]].toString());
-            final zValue = double.parse(data[keys[2]].toString());
-            
-            transformed.add({
-              'value': [xValue, yValue, zValue],
-              'name': 'Point $i',
-              'itemStyle': {'color': '#ff6b6b'},
-              'symbolSize': 5,
-            });
-          } catch (e) {
-            print('DEBUG: Error parsing row $i: $e');
-          }
+        // 正しくx,y,z列を特定して数値変換
+        try {
+          final xValue = double.tryParse(data['x']?.toString() ?? '0') ?? 0.0;
+          final yValue = double.tryParse(data['y']?.toString() ?? '0') ?? 0.0;
+          final zValue = double.tryParse(data['z']?.toString() ?? '0') ?? 0.0;
+          
+          transformed.add({
+            'value': [xValue, yValue, zValue],
+            'name': data['id']?.toString() ?? 'Point $i',
+            'itemStyle': {'color': '#ff6b6b'},
+            'symbolSize': int.tryParse(data['size']?.toString() ?? '5') ?? 5,
+          });
+        } catch (e) {
+          print('DEBUG: Error parsing row $i: $e');
         }
       }
       
@@ -120,22 +136,23 @@ class PreviewPageState extends State<PreviewPage> {
       );
     }
 
+    // 軸設定ファイルがあればそれを使用、なければプロジェクトのデフォルト値を使用
     final scatterData = ScatterPlotData(
       title: _project!.projectName,
       xAxis: AxisData(
-        legend: _project!.xLegend,
-        min: _project!.xMin,
-        max: _project!.xMax,
+        legend: _axisConfig?.xAxis.legend ?? _project!.xLegend,
+        min: _axisConfig?.xAxis.min ?? _project!.xMin,
+        max: _axisConfig?.xAxis.max ?? _project!.xMax,
       ),
       yAxis: AxisData(
-        legend: _project!.yLegend,
-        min: _project!.yMin,
-        max: _project!.yMax,
+        legend: _axisConfig?.yAxis.legend ?? _project!.yLegend,
+        min: _axisConfig?.yAxis.min ?? _project!.yMin,
+        max: _axisConfig?.yAxis.max ?? _project!.yMax,
       ),
       zAxis: AxisData(
-        legend: _project!.zLegend,
-        min: _project!.zMin,
-        max: _project!.zMax,
+        legend: _axisConfig?.zAxis.legend ?? _project!.zLegend,
+        min: _axisConfig?.zAxis.min ?? _project!.zMin,
+        max: _axisConfig?.zAxis.max ?? _project!.zMax,
       ),
     );
 
