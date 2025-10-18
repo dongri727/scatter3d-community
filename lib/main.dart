@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:scatter3d_community/firebase_options.dart';
-import 'package:scatter3d_community/pages/second_page.dart';
 import 'package:scatter3d_community/pages/top_page.dart';
 import 'package:scatter3d_community/projects/project_provider.dart';
 import 'package:scatter3d_community/utils/snackbars.dart';
@@ -45,11 +44,6 @@ class _MyAppState extends State<MyApp> {
       initialRoute: '/topPage',
       routes: {
         '/topPage': (context) => const TopPage(),
-        '/secondPage': (context) => const SecondPage(
-          parsedData: [],
-          scatterData: [],
-          csvFilePath: '',
-        ),
       },
       scaffoldMessengerKey: SuccessSnackBar.messengerKey,
     );

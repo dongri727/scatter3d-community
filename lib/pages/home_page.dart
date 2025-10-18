@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:scatter3d_community/pages/home_page_model.dart';
 import 'package:scatter3d_community/pages/second_page.dart';
-import 'package:scatter3d_community/projects/project_provider.dart';
 import 'package:scatter3d_community/utils/axis_config_widget.dart';
 import 'package:scatter3d_community/utils/snackbars.dart';
 import 'package:scatter3d_community/utils/text_fieald.dart';
@@ -48,43 +47,49 @@ class _MyHomePageState extends State<MyHomePage> {
 
               if (result != null && result.files.single.path != null) {
                 final File csvFile = File(result.files.single.path!);
-                if (!context.mounted) return;
-                final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
-                
-                // Cloud StorageにCSVファイルをアップロード
-                await projectProvider.uploadCSVAndAddProject(
-                  csvFile,
-                  model.scatterTitle.isNotEmpty ? model.scatterTitle : 'Untitled Project',
-                  xLegend: model.xLegend,
-                  xMin: model.xMin,
-                  xMax: model.xMax,
-                  yLegend: model.yLegend,
-                  yMin: model.yMin,
-                  yMax: model.yMax,
-                  zLegend: model.zLegend,
-                  zMin: model.zMin,
-                  zMax: model.zMax,
-                );
-                
-                // アップロード成功後、プロジェクト一覧を再読み込み
-                await projectProvider.loadProjects();
-                
-                SuccessSnackBar.show('CSVファイルがアップロードされました');
-                
-                // 最新のプロジェクトを取得して表示データを設定
-                final projects = projectProvider.projects;
-                if (projects.isNotEmpty) {
-                  final latestProject = projects.last;
+
+                // CSVファイルを読み取って解析（Cloud Storageにはまだアップロードしない）
+                final csvContent = await csvFile.readAsString();
+                final normalizedCsvContent = csvContent.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+
+                // 手動でCSVを解析
+                final lines = normalizedCsvContent.split('\n').where((line) => line.trim().isNotEmpty).toList();
+                final List<List<dynamic>> csvData = [];
+                for (final line in lines) {
+                  final row = line.split(',');
+                  csvData.add(row);
+                }
+
+                if (csvData.isNotEmpty) {
+                  final headers = csvData.first.map((e) => e.toString()).toList();
+                  final jsonData = <Map<String, dynamic>>[];
+
+                  for (int i = 1; i < csvData.length; i++) {
+                    final row = csvData[i];
+                    final rowData = <String, dynamic>{};
+                    for (int j = 0; j < headers.length && j < row.length; j++) {
+                      rowData[headers[j]] = row[j];
+                    }
+                    jsonData.add(rowData);
+                  }
+
+                  // 一時的にモデルに保存（Cloud Storageにはまだ保存しない）
+                  model.setTemporaryData(csvFile, jsonData);
+
                   setState(() {
-                    _parsedData = latestProject.jsonData;
-                    _csvFilePath = latestProject.csvFilePath;
+                    _parsedData = jsonData;
+                    _csvFilePath = csvFile.path; // ローカルファイルパス
                   });
+
+                  SuccessSnackBar.show('CSVファイルを読み込みました');
+                } else {
+                  FailureSnackBar.show('CSVファイルが空です');
                 }
               } else {
                 FailureSnackBar.show('ファイルの選択がキャンセルされました');
               }
             } catch (e) {
-              FailureSnackBar.show('アップロードに失敗しました: $e');
+              FailureSnackBar.show('ファイルの読み込みに失敗しました: $e');
             } finally {
               setState(() {
                 _isUploading = false;
@@ -172,14 +177,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                 "入力に不備があります");
                           }
                         },
-                        icon: _isUploading 
+                        icon: _isUploading
                           ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2)
                             )
-                          : const Icon(Icons.cloud_upload),
-                        label: Text(_isUploading ? 'アップロード中...' : 'Upload CSV to Cloud'),
+                          : const Icon(Icons.file_upload),
+                        label: Text(_isUploading ? '読み込み中...' : 'CSVファイルを選択'),
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -195,13 +200,12 @@ class _MyHomePageState extends State<MyHomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-
                       builder: (context) => SecondPage(
                         scatterData: scatterData,
                         parsedData: _parsedData!,
                         csvFilePath: _csvFilePath,
+                        homePageModel: model,
                       ),
-
                     ),
                   );
                 } else {
