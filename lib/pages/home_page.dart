@@ -54,7 +54,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 // Cloud StorageにCSVファイルをアップロード
                 await projectProvider.uploadCSVAndAddProject(
                   csvFile,
-                  model.scatterTitle.isNotEmpty ? model.scatterTitle : 'Untitled Project'
+                  model.scatterTitle.isNotEmpty ? model.scatterTitle : 'Untitled Project',
+                  xLegend: model.xLegend,
+                  xMin: model.xMin,
+                  xMax: model.xMax,
+                  yLegend: model.yLegend,
+                  yMin: model.yMin,
+                  yMax: model.yMax,
+                  zLegend: model.zLegend,
+                  zMin: model.zMin,
+                  zMax: model.zMax,
                 );
                 
                 // アップロード成功後、プロジェクト一覧を再読み込み

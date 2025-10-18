@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:scatter3d_community/projects/project_model.dart';
 import 'package:scatter3d_community/projects/axis_config_model.dart';
@@ -65,26 +64,30 @@ class ProjectProvider extends ChangeNotifier {
             
             print('DEBUG loadProjects: JsonData length: ${jsonData.length}');
             print('DEBUG loadProjects: First jsonData item: ${jsonData.isNotEmpty ? jsonData.first : "empty"}');
-            
+
+            // 軸設定ファイルを読み込む
+            final configPath = _storageService.getAxisConfigPath(fileName);
+            final axisConfig = await _storageService.downloadAxisConfigFile(configPath);
+
             // プロジェクトモデルを作成
             final project = ProjectModel(
               projectName: projectName,
-              xLegend: headers.isNotEmpty ? headers[0] : 'X',
-              yLegend: headers.length > 1 ? headers[1] : 'Y',
-              zLegend: headers.length > 2 ? headers[2] : 'Z',
-              xMax: 100,
-              xMin: 0,
-              yMax: 100,
-              yMin: 0,
-              zMax: 100,
-              zMin: 0,
+              xLegend: axisConfig?.xAxis.legend ?? (headers.isNotEmpty ? headers[0] : 'X'),
+              yLegend: axisConfig?.yAxis.legend ?? (headers.length > 1 ? headers[1] : 'Y'),
+              zLegend: axisConfig?.zAxis.legend ?? (headers.length > 2 ? headers[2] : 'Z'),
+              xMax: axisConfig?.xAxis.max ?? 100,
+              xMin: axisConfig?.xAxis.min ?? 0,
+              yMax: axisConfig?.yAxis.max ?? 100,
+              yMin: axisConfig?.yAxis.min ?? 0,
+              zMax: axisConfig?.zAxis.max ?? 100,
+              zMin: axisConfig?.zAxis.min ?? 0,
               csvFilePath: await ref.getDownloadURL(),
               storageRef: ref.fullPath,
               jsonData: jsonData,
               isSaved: true,
               createdAt: DateTime.now(),
             );
-            
+
             _projects.add(project);
           } else {
             print('DEBUG loadProjects: CSV data is empty for ${ref.name}');
@@ -111,7 +114,19 @@ class ProjectProvider extends ChangeNotifier {
   }
 
   /// CSVファイルをCloud Storageにアップロードしてプロジェクトを追加
-  Future<void> uploadCSVAndAddProject(File csvFile, String projectName) async {
+  Future<void> uploadCSVAndAddProject(
+    File csvFile,
+    String projectName, {
+    String? xLegend,
+    double? xMin,
+    double? xMax,
+    String? yLegend,
+    double? yMin,
+    double? yMax,
+    String? zLegend,
+    double? zMin,
+    double? zMax,
+  }) async {
     try {
       final fileName = '${projectName}_${DateTime.now().millisecondsSinceEpoch}.csv';
       final downloadUrl = await _storageService.uploadCSVFile(csvFile, fileName);
@@ -146,11 +161,28 @@ class ProjectProvider extends ChangeNotifier {
         print('DEBUG uploadCSV: JsonData length: ${jsonData.length}');
         print('DEBUG uploadCSV: First jsonData item: ${jsonData.isNotEmpty ? jsonData.first : "empty"}');
         
-        // デフォルトの軸設定を作成してアップロード
+        // 軸設定を作成してアップロード
         final baseFileName = fileName.replaceAll('.csv', '');
-        final axisConfig = ProjectAxisConfig.createDefault(
+        final now = DateTime.now();
+        final axisConfig = ProjectAxisConfig(
           projectName: projectName,
-          headers: headers,
+          xAxis: AxisConfig(
+            legend: xLegend ?? (headers.isNotEmpty ? headers[0] : 'X'),
+            min: xMin ?? 0.0,
+            max: xMax ?? 100.0,
+          ),
+          yAxis: AxisConfig(
+            legend: yLegend ?? (headers.length > 1 ? headers[1] : 'Y'),
+            min: yMin ?? 0.0,
+            max: yMax ?? 100.0,
+          ),
+          zAxis: AxisConfig(
+            legend: zLegend ?? (headers.length > 2 ? headers[2] : 'Z'),
+            min: zMin ?? 0.0,
+            max: zMax ?? 100.0,
+          ),
+          createdAt: now,
+          updatedAt: now,
         );
         await _storageService.uploadAxisConfigFile(axisConfig, baseFileName);
         
