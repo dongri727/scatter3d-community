@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 class AxisData {
@@ -38,6 +39,10 @@ class HomePageModel extends ChangeNotifier {
   double _zMin = 0.0;
   double _zMax = 0.0;
 
+  // 一時的なCSVデータ保持用
+  File? _temporaryCsvFile;
+  List<Map<String, dynamic>>? _parsedData;
+
   // Getters
   String get scatterTitle => _scatterTitle;
   String get xLegend => _xLegend;
@@ -49,6 +54,8 @@ class HomePageModel extends ChangeNotifier {
   String get zLegend => _zLegend;
   double get zMin => _zMin;
   double get zMax => _zMax;
+  File? get temporaryCsvFile => _temporaryCsvFile;
+  List<Map<String, dynamic>>? get parsedData => _parsedData;
 
   // Setters（変更時にnotifyListeners()を呼び出してUIへ通知）
   void setScatterTitle(String value) {
@@ -98,6 +105,20 @@ class HomePageModel extends ChangeNotifier {
 
   void setZMax(double value) {
     _zMax = value;
+    notifyListeners();
+  }
+
+  // 一時的なCSVデータを設定
+  void setTemporaryData(File csvFile, List<Map<String, dynamic>> parsedData) {
+    _temporaryCsvFile = csvFile;
+    _parsedData = parsedData;
+    notifyListeners();
+  }
+
+  // 一時データをクリア
+  void clearTemporaryData() {
+    _temporaryCsvFile = null;
+    _parsedData = null;
     notifyListeners();
   }
 
